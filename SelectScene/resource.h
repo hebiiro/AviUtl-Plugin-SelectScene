@@ -7,9 +7,11 @@
 #define IDC_ROW_COUNT                   1011
 #define IDC_COL_COUNT                   1012
 #define IDC_VOICE                       1013
+#define IDC_SCENE_COUNT                 1014
 #define IDC_ROW_COUNT_SPIN              1015
 #define IDC_COL_COUNT_SPIN              1016
 #define IDC_VOICE_SPIN                  1017
+#define IDC_SCENE_COUNT_SPIN            1018
 
 // Next default values for new objects
 // 

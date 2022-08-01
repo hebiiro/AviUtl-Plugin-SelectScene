@@ -44,7 +44,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, AviUtl:
 			loadConfig();
 
 			// 再描画する。
-			onPaint(hwnd, editp, fp);
+			::InvalidateRect(hwnd, 0, FALSE);
 
 			break;
 		}
@@ -57,6 +57,15 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, AviUtl:
 
 			::CloseThemeData(g_themeWindow), g_themeWindow = 0;
 			::CloseThemeData(g_themeButton), g_themeButton = 0;
+
+			break;
+		}
+	case AviUtl::FilterPlugin::WindowMessage::FileOpen:
+		{
+			MY_TRACE(_T("func_WndProc(FileOpen, 0x%08X, 0x%08X)\n"), wParam, lParam);
+
+			// 再描画する。
+			::InvalidateRect(hwnd, 0, FALSE);
 
 			break;
 		}
@@ -232,17 +241,19 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, AviUtl:
 
 EXTERN_C AviUtl::FilterPluginDLL* CALLBACK GetFilterTable()
 {
+	_tsetlocale(LC_CTYPE, _T(""));
+
 	LPCSTR name = "シーン簡単選択";
-	LPCSTR information = "シーン簡単選択 1.0.0 by 蛇色";
+	LPCSTR information = "シーン簡単選択 1.1.0 by 蛇色";
 
 	static AviUtl::FilterPluginDLL filter =
 	{
 		.flag =
-			AviUtl::detail::FilterPluginFlag::AlwaysActive |
-			AviUtl::detail::FilterPluginFlag::DispFilter |
-			AviUtl::detail::FilterPluginFlag::WindowThickFrame |
-			AviUtl::detail::FilterPluginFlag::WindowSize |
-			AviUtl::detail::FilterPluginFlag::ExInformation,
+			AviUtl::FilterPluginDLL::Flag::AlwaysActive |
+			AviUtl::FilterPluginDLL::Flag::DispFilter |
+			AviUtl::FilterPluginDLL::Flag::WindowThickFrame |
+			AviUtl::FilterPluginDLL::Flag::WindowSize |
+			AviUtl::FilterPluginDLL::Flag::ExInformation,
 		.x = 400,
 		.y = 400,
 		.name = name,

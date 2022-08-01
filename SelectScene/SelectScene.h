@@ -27,13 +27,14 @@ extern int g_dragScene;
 extern int g_layoutMode;
 extern int g_rowCount;
 extern int g_colCount;
+extern int g_sceneCount;
 extern int g_voice;
 
 //--------------------------------------------------------------------
 
 inline BOOL isSceneIndexValid(int sceneIndex)
 {
-	return sceneIndex >= 0 && sceneIndex < MaxSceneCount;
+	return sceneIndex >= 0 && sceneIndex < g_sceneCount;
 }
 
 void playVoice(int voice);

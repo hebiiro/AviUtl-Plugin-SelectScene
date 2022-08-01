@@ -22,6 +22,7 @@ int g_dragScene = -1;
 int g_layoutMode = LayoutMode::Horz;
 int g_rowCount = 10;
 int g_colCount = 10;
+int g_sceneCount = MaxSceneCount;
 int g_voice = 1;
 
 //--------------------------------------------------------------------
@@ -71,7 +72,7 @@ int hitTestVert(HWND hwnd, POINT point)
 	int clientH = clientRect.bottom - clientRect.top;
 
 	int rowCount = (g_rowCount > 0) ? g_rowCount : 5;
-	int colCount = (MaxSceneCount - 1) / rowCount + 1;
+	int colCount = (g_sceneCount - 1) / rowCount + 1;
 
 	int sceneIndex = 0;
 
@@ -79,7 +80,7 @@ int hitTestVert(HWND hwnd, POINT point)
 	{
 		for (int row = 0; row < rowCount; row++, sceneIndex++)
 		{
-			if (sceneIndex >= MaxSceneCount) break;
+			if (sceneIndex >= g_sceneCount) break;
 
 			RECT rc = {};
 			rc.left = clientX + ::MulDiv(clientW, col + 0, colCount);
@@ -104,7 +105,7 @@ int hitTestHorz(HWND hwnd, POINT point)
 	int clientH = clientRect.bottom - clientRect.top;
 
 	int colCount = (g_colCount > 0) ? g_colCount : 5;
-	int rowCount = (MaxSceneCount - 1) / colCount + 1;
+	int rowCount = (g_sceneCount - 1) / colCount + 1;
 
 	int sceneIndex = 0;
 
@@ -112,7 +113,7 @@ int hitTestHorz(HWND hwnd, POINT point)
 	{
 		for (int col = 0; col < colCount; col++, sceneIndex++)
 		{
-			if (sceneIndex >= MaxSceneCount) break;
+			if (sceneIndex >= g_sceneCount) break;
 
 			RECT rc = {};
 			rc.left = clientX + ::MulDiv(clientW, col + 0, colCount);
@@ -162,7 +163,7 @@ void onPaint(HWND hwnd, AviUtl::EditHandle* editp, AviUtl::FilterPlugin* fp)
 void onPaintVert(HDC dc, LPCRECT clientRect)
 {
 	int rowCount = (g_rowCount > 0) ? g_rowCount : 5;
-	int colCount = (MaxSceneCount - 1) / rowCount + 1;
+	int colCount = (g_sceneCount - 1) / rowCount + 1;
 
 	int sceneIndex = 0;
 
@@ -170,7 +171,7 @@ void onPaintVert(HDC dc, LPCRECT clientRect)
 	{
 		for (int row = 0; row < rowCount; row++, sceneIndex++)
 		{
-			if (sceneIndex >= MaxSceneCount) break;
+			if (sceneIndex >= g_sceneCount) break;
 
 			onPaintButton(dc, clientRect, row, rowCount, col, colCount, sceneIndex);
 		}
@@ -180,7 +181,7 @@ void onPaintVert(HDC dc, LPCRECT clientRect)
 void onPaintHorz(HDC dc, LPCRECT clientRect)
 {
 	int colCount = (g_colCount > 0) ? g_colCount : 5;
-	int rowCount = (MaxSceneCount - 1) / colCount + 1;
+	int rowCount = (g_sceneCount - 1) / colCount + 1;
 
 	int sceneIndex = 0;
 
@@ -188,7 +189,7 @@ void onPaintHorz(HDC dc, LPCRECT clientRect)
 	{
 		for (int col = 0; col < colCount; col++, sceneIndex++)
 		{
-			if (sceneIndex >= MaxSceneCount) break;
+			if (sceneIndex >= g_sceneCount) break;
 
 			onPaintButton(dc, clientRect, row, rowCount, col, colCount, sceneIndex);
 		}
@@ -291,8 +292,9 @@ void onConfigDialog(HWND hwnd)
 
 	ConfigDialog dialog(hwnd);
 
-	::SendDlgItemMessage(dialog, IDC_ROW_COUNT_SPIN, UDM_SETRANGE32, 0, 50);
-	::SendDlgItemMessage(dialog, IDC_COL_COUNT_SPIN, UDM_SETRANGE32, 0, 50);
+	::SendDlgItemMessage(dialog, IDC_ROW_COUNT_SPIN, UDM_SETRANGE32, 1, 50);
+	::SendDlgItemMessage(dialog, IDC_COL_COUNT_SPIN, UDM_SETRANGE32, 1, 50);
+	::SendDlgItemMessage(dialog, IDC_SCENE_COUNT_SPIN, UDM_SETRANGE32, 1, 50);
 	::SendDlgItemMessage(dialog, IDC_VOICE_SPIN, UDM_SETRANGE32, 0, 10);
 
 	HWND hwndLayoutMode = ::GetDlgItem(dialog, IDC_LAYOUT_MODE);
@@ -301,6 +303,7 @@ void onConfigDialog(HWND hwnd)
 	ComboBox_SetCurSel(hwndLayoutMode, g_layoutMode);
 	::SetDlgItemInt(dialog, IDC_ROW_COUNT, g_rowCount, FALSE);
 	::SetDlgItemInt(dialog, IDC_COL_COUNT, g_colCount, FALSE);
+	::SetDlgItemInt(dialog, IDC_SCENE_COUNT, g_sceneCount, FALSE);
 	::SetDlgItemInt(dialog, IDC_VOICE, g_voice, FALSE);
 
 	int retValue = dialog.doModal();
@@ -311,6 +314,7 @@ void onConfigDialog(HWND hwnd)
 	g_layoutMode = ComboBox_GetCurSel(hwndLayoutMode);
 	g_rowCount = ::GetDlgItemInt(dialog, IDC_ROW_COUNT, 0, FALSE);
 	g_colCount = ::GetDlgItemInt(dialog, IDC_COL_COUNT, 0, FALSE);
+	g_sceneCount = ::GetDlgItemInt(dialog, IDC_SCENE_COUNT, 0, FALSE);
 	g_voice = ::GetDlgItemInt(dialog, IDC_VOICE, 0, FALSE);
 
 	::InvalidateRect(hwnd, 0, FALSE);
@@ -330,6 +334,7 @@ void loadConfig()
 	getPrivateProfileInt(fileName, L"Config", L"layoutMode", g_layoutMode);
 	getPrivateProfileInt(fileName, L"Config", L"rowCount", g_rowCount);
 	getPrivateProfileInt(fileName, L"Config", L"colCount", g_colCount);
+	getPrivateProfileInt(fileName, L"Config", L"sceneCount", g_sceneCount);
 	getPrivateProfileInt(fileName, L"Config", L"voice", g_voice);
 }
 
@@ -345,6 +350,7 @@ void saveConfig()
 	setPrivateProfileInt(fileName, L"Config", L"layoutMode", g_layoutMode);
 	setPrivateProfileInt(fileName, L"Config", L"rowCount", g_rowCount);
 	setPrivateProfileInt(fileName, L"Config", L"colCount", g_colCount);
+	setPrivateProfileInt(fileName, L"Config", L"sceneCount", g_sceneCount);
 	setPrivateProfileInt(fileName, L"Config", L"voice", g_voice);
 }
 
