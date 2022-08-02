@@ -7,10 +7,8 @@ BOOL func_init(AviUtl::FilterPlugin* fp)
 {
 	MY_TRACE(_T("func_init()\n"));
 
+	// 拡張編集関連のアドレスを取得する。
 	g_auin.initExEditAddress();
-	g_fp = fp;
-
-	loadConfig();
 
 	return TRUE;
 }
@@ -18,8 +16,6 @@ BOOL func_init(AviUtl::FilterPlugin* fp)
 BOOL func_exit(AviUtl::FilterPlugin* fp)
 {
 	MY_TRACE(_T("func_exit()\n"));
-
-	saveConfig();
 
 	return TRUE;
 }
@@ -40,8 +36,7 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, AviUtl:
 			g_themeButton = ::OpenThemeData(hwnd, VSCLASS_BUTTON);
 			MY_TRACE_HEX(g_themeButton);
 
-			// 設定を読み込む。
-			loadConfig();
+			calcLayout(hwnd);
 
 			// 再描画する。
 			::InvalidateRect(hwnd, 0, FALSE);
@@ -80,6 +75,8 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, AviUtl:
 	case WM_SIZE:
 		{
 			MY_TRACE(_T("func_WndProc(WM_SIZE, 0x%08X, 0x%08X)\n"), wParam, lParam);
+
+			calcLayout(hwnd, TRUE);
 
 			break;
 		}
@@ -226,9 +223,9 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, AviUtl:
 
 			break;
 		}
-	case WM_CONTEXTMENU:
+	case WM_RBUTTONUP:
 		{
-			MY_TRACE(_T("func_WndProc(WM_CONTEXTMENU, 0x%08X, 0x%08X)\n"), wParam, lParam);
+			MY_TRACE(_T("func_WndProc(WM_RBUTTONUP, 0x%08X, 0x%08X)\n"), wParam, lParam);
 
 			onContextMenu(hwnd);
 
@@ -239,12 +236,44 @@ BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, AviUtl:
 	return FALSE;
 }
 
+EXTERN_C BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
+{
+	switch (reason)
+	{
+	case DLL_PROCESS_ATTACH:
+		{
+			// ロケールを設定する。
+			// これをやらないと日本語テキストが文字化けするので最初に実行する。
+			_tsetlocale(LC_CTYPE, _T(""));
+
+			MY_TRACE(_T("DLL_PROCESS_ATTACH\n"));
+
+			// この DLL のハンドルをグローバル変数に保存しておく。
+			g_instance = instance;
+			MY_TRACE_HEX(g_instance);
+
+			break;
+		}
+	case DLL_PROCESS_DETACH:
+		{
+			MY_TRACE(_T("DLL_PROCESS_DETACH\n"));
+
+			break;
+		}
+	}
+
+	return TRUE;
+}
+
 EXTERN_C AviUtl::FilterPluginDLL* CALLBACK GetFilterTable()
 {
-	_tsetlocale(LC_CTYPE, _T(""));
+	MY_TRACE(_T("GetFilterTable()\n"));
+
+	// 設定を読み込む。
+	loadConfig();
 
 	LPCSTR name = "シーン簡単選択";
-	LPCSTR information = "シーン簡単選択 1.1.0 by 蛇色";
+	LPCSTR information = "シーン簡単選択 2.0.0 by 蛇色";
 
 	static AviUtl::FilterPluginDLL filter =
 	{
@@ -262,6 +291,12 @@ EXTERN_C AviUtl::FilterPluginDLL* CALLBACK GetFilterTable()
 		.func_WndProc = func_WndProc,
 		.information = information,
 	};
+
+	if (g_fixedSize)
+	{
+		// 固定サイズモードのときはサイズ変更フレームを外す。
+		filter.flag &= ~AviUtl::FilterPluginDLL::Flag::WindowThickFrame;
+	}
 
 	return &filter;
 }

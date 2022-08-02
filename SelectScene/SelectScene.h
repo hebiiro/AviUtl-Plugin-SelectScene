@@ -18,17 +18,21 @@ static const int MaxSceneCount = 50;
 //--------------------------------------------------------------------
 
 extern AviUtlInternal g_auin;
-extern AviUtl::FilterPlugin* g_fp;
+extern HINSTANCE g_instance;
 extern HTHEME g_themeWindow;
 extern HTHEME g_themeButton;
 extern int g_hotScene;
 extern int g_dragScene;
+extern std::vector<RECT> g_buttonRectArray;
 
 extern int g_layoutMode;
 extern int g_rowCount;
 extern int g_colCount;
 extern int g_sceneCount;
 extern int g_voice;
+extern BOOL g_fixedSize;
+extern int g_buttonWidth;
+extern int g_buttonHeight;
 
 //--------------------------------------------------------------------
 
@@ -39,14 +43,13 @@ inline BOOL isSceneIndexValid(int sceneIndex)
 
 void playVoice(int voice);
 
+void calcLayout(HWND hwnd, BOOL onSize = FALSE);
+void calcLayoutVert(HWND hwnd);
+void calcLayoutHorz(HWND hwnd);
+
 int hitTest(HWND hwnd, POINT point);
-int hitTestVert(HWND hwnd, POINT point);
-int hitTestHorz(HWND hwnd, POINT point);
 
 void onPaint(HWND hwnd, AviUtl::EditHandle* editp, AviUtl::FilterPlugin* fp);
-void onPaintVert(HDC dc, LPCRECT clientRect);
-void onPaintHorz(HDC dc, LPCRECT clientRect);
-void onPaintButton(HDC dc, LPCRECT clientRect, int row, int rowCount, int col, int colCount, int sceneIndex);
 void onContextMenu(HWND hwnd);
 void onConfigDialog(HWND hwnd);
 

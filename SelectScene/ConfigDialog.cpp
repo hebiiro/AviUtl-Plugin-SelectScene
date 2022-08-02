@@ -5,7 +5,7 @@
 //---------------------------------------------------------------------
 
 ConfigDialog::ConfigDialog(HWND hwnd)
-	: Dialog(g_fp->dll_hinst, MAKEINTRESOURCE(IDD_CONFIG), hwnd)
+	: Dialog(g_instance, MAKEINTRESOURCE(IDD_CONFIG), hwnd)
 {
 }
 

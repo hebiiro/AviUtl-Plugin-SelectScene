@@ -13,17 +13,21 @@ void ___outputLog(LPCTSTR text, LPCTSTR output)
 //--------------------------------------------------------------------
 
 AviUtlInternal g_auin;
-AviUtl::FilterPlugin* g_fp = 0;
+HINSTANCE g_instance = 0;
 HTHEME g_themeWindow = 0;
 HTHEME g_themeButton = 0;
 int g_hotScene = -1;
 int g_dragScene = -1;
+std::vector<RECT> g_buttonRectArray;
 
 int g_layoutMode = LayoutMode::Horz;
 int g_rowCount = 10;
 int g_colCount = 10;
 int g_sceneCount = MaxSceneCount;
 int g_voice = 1;
+BOOL g_fixedSize = TRUE;
+int g_buttonWidth = 100;
+int g_buttonHeight = 24;
 
 //--------------------------------------------------------------------
 
@@ -33,7 +37,7 @@ void playVoice(int voice)
 
 	// フォルダ名を取得する。
 	TCHAR folderName[MAX_PATH] = {};
-	::GetModuleFileName(g_fp->dll_hinst, folderName, MAX_PATH);
+	::GetModuleFileName(g_instance, folderName, MAX_PATH);
 	::PathRemoveExtension(folderName);
 	MY_TRACE_TSTR(folderName);
 
@@ -52,19 +56,22 @@ void playVoice(int voice)
 
 //--------------------------------------------------------------------
 
-int hitTest(HWND hwnd, POINT point)
+void calcLayout(HWND hwnd, BOOL onSize)
 {
+	if (onSize && g_fixedSize)
+		return; // 固定サイズの場合は WM_SIZE では何もしない。
+
 	switch (g_layoutMode)
 	{
-	case LayoutMode::Vert: return hitTestVert(hwnd, point);
-	case LayoutMode::Horz: return hitTestHorz(hwnd, point);
+	case LayoutMode::Vert: calcLayoutVert(hwnd); break;
+	case LayoutMode::Horz: calcLayoutHorz(hwnd); break;
 	}
-
-	return -1;
 }
 
-int hitTestVert(HWND hwnd, POINT point)
+void calcLayoutVert(HWND hwnd)
 {
+	g_buttonRectArray.resize(g_sceneCount);
+
 	RECT clientRect; ::GetClientRect(hwnd, &clientRect);
 	int clientX = clientRect.left;
 	int clientY = clientRect.top;
@@ -83,21 +90,41 @@ int hitTestVert(HWND hwnd, POINT point)
 			if (sceneIndex >= g_sceneCount) break;
 
 			RECT rc = {};
-			rc.left = clientX + ::MulDiv(clientW, col + 0, colCount);
-			rc.right = clientX + ::MulDiv(clientW, col + 1, colCount);
-			rc.top = clientY + ::MulDiv(clientH, row + 0, rowCount);
-			rc.bottom = clientY + ::MulDiv(clientH, row + 1, rowCount);
 
-			if (::PtInRect(&rc, point))
-				return sceneIndex;
+			if (g_fixedSize)
+			{
+				rc.left = clientX + g_buttonWidth * col;
+				rc.top = clientY + g_buttonHeight * row;
+				rc.right = rc.left + g_buttonWidth;
+				rc.bottom = rc.top + g_buttonHeight;
+			}
+			else
+			{
+				rc.left = clientX + ::MulDiv(clientW, col + 0, colCount);
+				rc.right = clientX + ::MulDiv(clientW, col + 1, colCount);
+				rc.top = clientY + ::MulDiv(clientH, row + 0, rowCount);
+				rc.bottom = clientY + ::MulDiv(clientH, row + 1, rowCount);
+			}
+
+			g_buttonRectArray[sceneIndex] = rc;
 		}
 	}
 
-	return -1;
+	if (g_fixedSize)
+	{
+		RECT rc = clientRect;
+		rc.right = rc.left + g_buttonWidth * colCount;
+		rc.bottom = rc.top + g_buttonHeight * rowCount;
+		clientToWindow(hwnd, &rc);
+
+		::SetWindowPos(hwnd, 0, 0, 0, getWidth(rc), getHeight(rc), SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
+	}
 }
 
-int hitTestHorz(HWND hwnd, POINT point)
+void calcLayoutHorz(HWND hwnd)
 {
+	g_buttonRectArray.resize(g_sceneCount);
+
 	RECT clientRect; ::GetClientRect(hwnd, &clientRect);
 	int clientX = clientRect.left;
 	int clientY = clientRect.top;
@@ -116,14 +143,46 @@ int hitTestHorz(HWND hwnd, POINT point)
 			if (sceneIndex >= g_sceneCount) break;
 
 			RECT rc = {};
-			rc.left = clientX + ::MulDiv(clientW, col + 0, colCount);
-			rc.right = clientX + ::MulDiv(clientW, col + 1, colCount);
-			rc.top = clientY + ::MulDiv(clientH, row + 0, rowCount);
-			rc.bottom = clientY + ::MulDiv(clientH, row + 1, rowCount);
 
-			if (::PtInRect(&rc, point))
-				return sceneIndex;
+			if (g_fixedSize)
+			{
+				rc.left = clientX + g_buttonWidth * col;
+				rc.top = clientY + g_buttonHeight * row;
+				rc.right = rc.left + g_buttonWidth;
+				rc.bottom = rc.top + g_buttonHeight;
+			}
+			else
+			{
+				rc.left = clientX + ::MulDiv(clientW, col + 0, colCount);
+				rc.right = clientX + ::MulDiv(clientW, col + 1, colCount);
+				rc.top = clientY + ::MulDiv(clientH, row + 0, rowCount);
+				rc.bottom = clientY + ::MulDiv(clientH, row + 1, rowCount);
+			}
+
+			g_buttonRectArray[sceneIndex] = rc;
 		}
+	}
+
+	if (g_fixedSize)
+	{
+		RECT rc = clientRect;
+		rc.right = rc.left + g_buttonWidth * colCount;
+		rc.bottom = rc.top + g_buttonHeight * rowCount;
+		::MapWindowPoints(hwnd, 0, (LPPOINT)&rc, 2);
+		clientToWindow(hwnd, &rc);
+
+		::SetWindowPos(hwnd, 0, 0, 0, getWidth(rc), getHeight(rc), SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
+	}
+}
+
+//--------------------------------------------------------------------
+
+int hitTest(HWND hwnd, POINT point)
+{
+	for (int i = 0; i < (int)g_buttonRectArray.size(); i++)
+	{
+		if (::PtInRect(&g_buttonRectArray[i], point))
+			return i;
 	}
 
 	return -1;
@@ -153,108 +212,57 @@ void onPaint(HWND hwnd, AviUtl::EditHandle* editp, AviUtl::FilterPlugin* fp)
 		::FillRect(dc, &clientRect, brush);
 	}
 
-	switch (g_layoutMode)
+	for (int i = 0; i < (int)g_buttonRectArray.size(); i++)
 	{
-	case LayoutMode::Vert: onPaintVert(dc, &clientRect); break;
-	case LayoutMode::Horz: onPaintHorz(dc, &clientRect); break;
-	}
-}
+		int sceneIndex = i;
+		const RECT& rc = g_buttonRectArray[i];
 
-void onPaintVert(HDC dc, LPCRECT clientRect)
-{
-	int rowCount = (g_rowCount > 0) ? g_rowCount : 5;
-	int colCount = (g_sceneCount - 1) / rowCount + 1;
+		// 描画するテキストを取得する。
+		WCHAR text[MAX_PATH] = {};
 
-	int sceneIndex = 0;
+		ExEdit::SceneSetting* scene = g_auin.GetSceneSetting(sceneIndex);
 
-	for (int col = 0; col < colCount; col++)
-	{
-		for (int row = 0; row < rowCount; row++, sceneIndex++)
+		if (scene->name)
 		{
-			if (sceneIndex >= g_sceneCount) break;
-
-			onPaintButton(dc, clientRect, row, rowCount, col, colCount, sceneIndex);
+			::StringCbPrintfW(text, sizeof(text), L"%hs", scene->name);
 		}
-	}
-}
-
-void onPaintHorz(HDC dc, LPCRECT clientRect)
-{
-	int colCount = (g_colCount > 0) ? g_colCount : 5;
-	int rowCount = (g_sceneCount - 1) / colCount + 1;
-
-	int sceneIndex = 0;
-
-	for (int row = 0; row < rowCount; row++)
-	{
-		for (int col = 0; col < colCount; col++, sceneIndex++)
-		{
-			if (sceneIndex >= g_sceneCount) break;
-
-			onPaintButton(dc, clientRect, row, rowCount, col, colCount, sceneIndex);
-		}
-	}
-}
-
-void onPaintButton(HDC dc, LPCRECT clientRect, int row, int rowCount, int col, int colCount, int sceneIndex)
-{
-	int clientX = clientRect->left;
-	int clientY = clientRect->top;
-	int clientW = clientRect->right - clientRect->left;
-	int clientH = clientRect->bottom - clientRect->top;
-
-	// 描画矩形を取得する。
-	RECT rc = {};
-	rc.left = clientX + ::MulDiv(clientW, col + 0, colCount);
-	rc.right = clientX + ::MulDiv(clientW, col + 1, colCount);
-	rc.top = clientY + ::MulDiv(clientH, row + 0, rowCount);
-	rc.bottom = clientY + ::MulDiv(clientH, row + 1, rowCount);
-
-	// 描画するテキストを取得する。
-	WCHAR text[MAX_PATH] = {};
-
-	ExEdit::SceneSetting* scene = g_auin.GetSceneSetting(sceneIndex);
-
-	if (scene->name)
-	{
-		::StringCbPrintfW(text, sizeof(text), L"%hs", scene->name);
-	}
-	else
-	{
-		if (sceneIndex == 0)
-			::StringCbCopyW(text, sizeof(text), L"Root");
 		else
-			::StringCbPrintfW(text, sizeof(text), L"%d", sceneIndex);
-	}
+		{
+			if (sceneIndex == 0)
+				::StringCbCopyW(text, sizeof(text), L"Root");
+			else
+				::StringCbPrintfW(text, sizeof(text), L"%d", sceneIndex);
+		}
 
-	// パートとステートを取得する。
-	int partId = BP_PUSHBUTTON;
-	int stateId = PBS_NORMAL;
+		// パートとステートを取得する。
+		int partId = BP_PUSHBUTTON;
+		int stateId = PBS_NORMAL;
 
-	if (sceneIndex == g_auin.GetCurrentSceneIndex())
-	{
-		stateId = PBS_PRESSED;
-	}
-	else if (sceneIndex == g_dragScene)
-	{
-		if (sceneIndex == g_hotScene)
+		if (sceneIndex == g_auin.GetCurrentSceneIndex())
 		{
 			stateId = PBS_PRESSED;
 		}
-		else
+		else if (sceneIndex == g_dragScene)
+		{
+			if (sceneIndex == g_hotScene)
+			{
+				stateId = PBS_PRESSED;
+			}
+			else
+			{
+				stateId = PBS_HOT;
+			}
+		}
+		else if (sceneIndex == g_hotScene)
 		{
 			stateId = PBS_HOT;
 		}
-	}
-	else if (sceneIndex == g_hotScene)
-	{
-		stateId = PBS_HOT;
-	}
 
-	// テーマを使用して描画する。
-	::DrawThemeBackground(g_themeButton, dc, partId, stateId, &rc, 0);
-	::DrawThemeText(g_themeButton, dc, partId, stateId,
-		text, ::lstrlenW(text), DT_CENTER | DT_VCENTER | DT_SINGLELINE, 0, &rc);
+		// テーマを使用して描画する。
+		::DrawThemeBackground(g_themeButton, dc, partId, stateId, &rc, 0);
+		::DrawThemeText(g_themeButton, dc, partId, stateId,
+			text, ::lstrlenW(text), DT_CENTER | DT_VCENTER | DT_SINGLELINE, 0, &rc);
+	}
 }
 
 //--------------------------------------------------------------------
@@ -305,6 +313,10 @@ void onConfigDialog(HWND hwnd)
 	::SetDlgItemInt(dialog, IDC_COL_COUNT, g_colCount, FALSE);
 	::SetDlgItemInt(dialog, IDC_SCENE_COUNT, g_sceneCount, FALSE);
 	::SetDlgItemInt(dialog, IDC_VOICE, g_voice, FALSE);
+	HWND hwndFixedSize = ::GetDlgItem(dialog, IDC_FIXED_SIZE);
+	Button_SetCheck(hwndFixedSize, g_fixedSize);
+	::SetDlgItemInt(dialog, IDC_BUTTON_WIDTH, g_buttonWidth, FALSE);
+	::SetDlgItemInt(dialog, IDC_BUTTON_HEIGHT, g_buttonHeight, FALSE);
 
 	int retValue = dialog.doModal();
 
@@ -316,6 +328,11 @@ void onConfigDialog(HWND hwnd)
 	g_colCount = ::GetDlgItemInt(dialog, IDC_COL_COUNT, 0, FALSE);
 	g_sceneCount = ::GetDlgItemInt(dialog, IDC_SCENE_COUNT, 0, FALSE);
 	g_voice = ::GetDlgItemInt(dialog, IDC_VOICE, 0, FALSE);
+	g_fixedSize = Button_GetCheck(hwndFixedSize);
+	g_buttonWidth = ::GetDlgItemInt(dialog, IDC_BUTTON_WIDTH, 0, FALSE);
+	g_buttonHeight = ::GetDlgItemInt(dialog, IDC_BUTTON_HEIGHT, 0, FALSE);
+
+	calcLayout(hwnd);
 
 	::InvalidateRect(hwnd, 0, FALSE);
 }
@@ -327,7 +344,7 @@ void loadConfig()
 	MY_TRACE(_T("loadConfig()\n"));
 
 	WCHAR fileName[MAX_PATH] = {};
-	::GetModuleFileNameW(g_fp->dll_hinst,  fileName, MAX_PATH);
+	::GetModuleFileNameW(g_instance,  fileName, MAX_PATH);
 	::PathRenameExtensionW(fileName, L".ini");
 	MY_TRACE_WSTR(fileName);
 
@@ -336,6 +353,9 @@ void loadConfig()
 	getPrivateProfileInt(fileName, L"Config", L"colCount", g_colCount);
 	getPrivateProfileInt(fileName, L"Config", L"sceneCount", g_sceneCount);
 	getPrivateProfileInt(fileName, L"Config", L"voice", g_voice);
+	getPrivateProfileBool(fileName, L"Config", L"fixedSize", g_fixedSize);
+	getPrivateProfileInt(fileName, L"Config", L"buttonWidth", g_buttonWidth);
+	getPrivateProfileInt(fileName, L"Config", L"buttonHeight", g_buttonHeight);
 }
 
 void saveConfig()
@@ -343,7 +363,7 @@ void saveConfig()
 	MY_TRACE(_T("saveConfig()\n"));
 
 	WCHAR fileName[MAX_PATH] = {};
-	::GetModuleFileNameW(g_fp->dll_hinst,  fileName, MAX_PATH);
+	::GetModuleFileNameW(g_instance,  fileName, MAX_PATH);
 	::PathRenameExtensionW(fileName, L".ini");
 	MY_TRACE_WSTR(fileName);
 
@@ -352,6 +372,9 @@ void saveConfig()
 	setPrivateProfileInt(fileName, L"Config", L"colCount", g_colCount);
 	setPrivateProfileInt(fileName, L"Config", L"sceneCount", g_sceneCount);
 	setPrivateProfileInt(fileName, L"Config", L"voice", g_voice);
+	setPrivateProfileBool(fileName, L"Config", L"fixedSize", g_fixedSize);
+	setPrivateProfileInt(fileName, L"Config", L"buttonWidth", g_buttonWidth);
+	setPrivateProfileInt(fileName, L"Config", L"buttonHeight", g_buttonHeight);
 }
 
 //--------------------------------------------------------------------
