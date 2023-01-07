@@ -44,6 +44,7 @@ SelectScene フォルダ内の wav ファイルが再生されます。
 
 ## 更新履歴
 
+* 2.1.0 - 2023/01/07 音を外部プロセスで鳴らすように変更
 * 2.0.0 - 2022/08/02 ウィンドウサイズを固定できる機能を追加
 * 1.1.0 - 2022/08/01 シーンの数を制限できるように修正
 * 1.0.0 - 2022/07/21 初版
@@ -51,7 +52,7 @@ SelectScene フォルダ内の wav ファイルが再生されます。
 ## 動作確認
 
 * (必須) AviUtl 1.10 & 拡張編集 0.92 http://spring-fragrance.mints.ne.jp/aviutl/
-* (共存確認) patch.aul r41 https://scrapbox.io/ePi5131/patch.aul
+* (共存確認) patch.aul r42 https://scrapbox.io/ePi5131/patch.aul
 
 ## クレジット
 

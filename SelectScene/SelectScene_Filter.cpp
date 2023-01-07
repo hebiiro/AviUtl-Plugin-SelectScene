@@ -273,7 +273,7 @@ EXTERN_C AviUtl::FilterPluginDLL* CALLBACK GetFilterTable()
 	loadConfig();
 
 	LPCSTR name = "シーン簡単選択";
-	LPCSTR information = "シーン簡単選択 2.0.0 by 蛇色";
+	LPCSTR information = "シーン簡単選択 2.1.0 by 蛇色";
 
 	static AviUtl::FilterPluginDLL filter =
 	{
