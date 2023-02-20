@@ -8,7 +8,8 @@ BOOL func_init(AviUtl::FilterPlugin* fp)
 	MY_TRACE(_T("func_init()\n"));
 
 	// 拡張編集関連のアドレスを取得する。
-	g_auin.initExEditAddress();
+	if (!g_auin.initExEditAddress())
+		return FALSE;
 
 	return TRUE;
 }
@@ -265,7 +266,7 @@ EXTERN_C BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved
 	return TRUE;
 }
 
-EXTERN_C AviUtl::FilterPluginDLL* CALLBACK GetFilterTable()
+EXTERN_C AviUtl::FilterPluginDLL* WINAPI GetFilterTable()
 {
 	MY_TRACE(_T("GetFilterTable()\n"));
 
@@ -273,7 +274,7 @@ EXTERN_C AviUtl::FilterPluginDLL* CALLBACK GetFilterTable()
 	loadConfig();
 
 	LPCSTR name = "シーン簡単選択";
-	LPCSTR information = "シーン簡単選択 2.1.0 by 蛇色";
+	LPCSTR information = "シーン簡単選択 2.1.1 by 蛇色";
 
 	static AviUtl::FilterPluginDLL filter =
 	{
